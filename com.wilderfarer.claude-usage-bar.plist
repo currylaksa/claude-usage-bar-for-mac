@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd agent that starts Claude Usage Bar at login.
+
+  If you ran install.sh, this file was written for you (with real paths) to
+  ~/Library/LaunchAgents/ — you can ignore this template.
+
+  To wire it up by hand: replace the __PLACEHOLDER__ path below with the
+  absolute path to the compiled binary, save the file to
+      ~/Library/LaunchAgents/com.wilderfarer.claude-usage-bar.plist
+  then run:
+      launchctl load -w ~/Library/LaunchAgents/com.wilderfarer.claude-usage-bar.plist
+
+  RunAtLoad + KeepAlive:false  →  starts at login, but if you pick "Quit" from
+  the menu it stays quit until the next login (no annoying auto-relaunch).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.wilderfarer.claude-usage-bar</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__PLACEHOLDER__</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/claude-usage-bar.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/claude-usage-bar.err</string>
+</dict>
+</plist>
