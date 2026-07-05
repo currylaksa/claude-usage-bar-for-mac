@@ -1,13 +1,13 @@
 # 🐢 Claude Usage Bar
 
 **Stop tab-switching to check if you've hit your Claude limit.**
-A native macOS menu-bar widget that shows your **Claude.ai session usage** — live % used, a countdown to reset, and a mood emoji that judges you accordingly.
+A native macOS menu-bar widget that shows your **Claude.ai session usage** — a ring gauge that fills as you use up your session, live % used, and a countdown to reset.
 
 ```
-☕ ▓▓░░░ 42% · 2h14m      ← lives quietly in your menu bar
+◔ 42% · 2h14m      ← lives quietly in your menu bar
 ```
 
-😴 `<25%` → ☕ `<60%` → 😰 `<85%` → 🔥 `≥85%` — the emoji and color (green → orange → red) track your usage so you can tell how worried to be without reading a single number.
+The ring is drawn natively (Core Graphics, not text glyphs) and stays monochrome — matching your menu bar in light and dark mode — until you're close to the limit: it turns **orange at 80%** and **red at 90%**, so color appears exactly when you should start worrying.
 
 Click it for the full picture:
 

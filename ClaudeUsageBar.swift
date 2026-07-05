@@ -172,24 +172,46 @@ func fmtClock(_ resetEpoch: TimeInterval?) -> String {
     return fmt.string(from: Date(timeIntervalSince1970: resetEpoch))
 }
 
-func moodEmoji(_ used: Double) -> String {
-    switch used {
-    case ..<25: return "😴"
-    case ..<60: return "☕"
-    case ..<85: return "😰"
-    default:    return "🔥"
+/// Orange from 80%, red from 90%; below that nil → native monochrome.
+func usageColor(_ used: Double) -> NSColor? {
+    used >= 90 ? .systemRed : used >= 80 ? .systemOrange : nil
+}
+
+/// Ring gauge drawn with Core Graphics: a faint full-circle track plus an arc
+/// that fills clockwise from 12 o'clock as usage grows. With no color it's a
+/// template image, so macOS tints it to match the menu bar (light/dark).
+func ringImage(_ used: Double, color: NSColor?) -> NSImage {
+    let side: CGFloat = 16
+    let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+        let lineWidth: CGFloat = 2
+        let radius = (min(rect.width, rect.height) - lineWidth) / 2
+        let center = NSPoint(x: rect.midX, y: rect.midY)
+        let tint = color ?? .black
+
+        let track = NSBezierPath()
+        track.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
+        track.lineWidth = lineWidth
+        tint.withAlphaComponent(0.25).setStroke()
+        track.stroke()
+
+        let frac = min(max(used / 100, 0), 1)
+        if frac > 0 {
+            let arc = NSBezierPath()
+            if frac >= 0.999 {
+                arc.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 360)
+            } else {
+                arc.appendArc(withCenter: center, radius: radius,
+                              startAngle: 90, endAngle: 90 - frac * 360, clockwise: true)
+            }
+            arc.lineWidth = lineWidth
+            arc.lineCapStyle = .round
+            tint.setStroke()
+            arc.stroke()
+        }
+        return true
     }
-}
-
-/// 5-block gauge: ▓▓▓░░
-func gauge(_ used: Double) -> String {
-    let filled = min(max(Int((used / 20).rounded()), 0), 5)
-    return String(repeating: "▓", count: filled)
-        + String(repeating: "░", count: 5 - filled)
-}
-
-func usageColor(_ used: Double) -> NSColor {
-    used < 50 ? .systemGreen : used < 80 ? .systemOrange : .systemRed
+    image.isTemplate = (color == nil)
+    return image
 }
 
 // ─────────────────────────────── app ──────────────────────────────────
@@ -283,6 +305,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let button = statusItem.button else { return }
 
         if errorState == .nokey {
+            button.image = nil
             button.title = "\(titlePrefix) set key"
             itemUsed.title = "Session: no session key"
             itemRemaining.title = "Remaining: —"
@@ -290,6 +313,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         if errorState == .auth {
+            button.image = nil
             button.title = "\(titlePrefix) ⚠ key"
             itemUsed.title = "Session key expired or rejected"
             itemRemaining.title = "Re-paste from claude.ai cookies"
@@ -303,16 +327,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if let used {
             let warn = errorState == .api ? " ⚠" : ""
-            var title = "\(moodEmoji(used)) \(gauge(used)) \(Int(used.rounded()))%"
+            var title = " \(Int(used.rounded()))%"
             if let cd { title += " · \(cd)" }
-            button.attributedTitle = NSAttributedString(
-                string: title + warn,
-                attributes: [
-                    .foregroundColor: usageColor(used),
-                    .font: NSFont.monospacedDigitSystemFont(
-                        ofSize: NSFont.systemFontSize, weight: .regular),
-                    .baselineOffset: 1,
-                ])
+            let color = usageColor(used)
+            button.image = ringImage(used, color: color)
+            button.imagePosition = .imageLeft
+            var attrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(
+                    ofSize: NSFont.systemFontSize, weight: .regular),
+                .baselineOffset: 1,
+            ]
+            if let color { attrs[.foregroundColor] = color }
+            button.attributedTitle = NSAttributedString(string: title + warn,
+                                                        attributes: attrs)
             itemUsed.title = "Session: \(Int(used.rounded()))% used"
             itemRemaining.title = "Remaining: \(Int(max(0, 100 - used).rounded()))%"
             if resetEpoch != nil, let cd {
@@ -322,6 +349,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         } else {
             // first fetch not back yet
+            button.image = nil
             button.title = "\(titlePrefix) …"
             itemUsed.title = "Session: loading…"
             itemRemaining.title = "Remaining: —"
